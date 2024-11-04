@@ -8,10 +8,12 @@ while True:
         data = ser.readline().decode('utf-8').rstrip()
         datalist = data.split(",")
         TOF1 = float(datalist[0])
-        thermal = [float(x) for x in datalist[1:]]
+        TOF2 = float(datalist[1])
+        #thermal = [float(x) for x in datalist[2:]]
         print(TOF1)
-        matrix = np.array(thermal).reshape(8,8)
-        print(matrix)
+        print(TOF2)
+        #matrix = np.array(thermal).reshape(8,8)
+        #print(matrix)
     except UnicodeDecodeError: # catch error and ignore it
         print('uh oh')
 
