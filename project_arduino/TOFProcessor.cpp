@@ -26,7 +26,7 @@ void TOFProcessor::clearWithFlag() {
 // Process incoming TOF data
 void TOFProcessor::process(float TOF1, float TOF2) {
     // Handle TOF1
-    if (TOF1 == 8191 || TOF1 == -1) {
+    if (TOF1 > 2000 || TOF1 == -1) {
         TOF1_arr.push_back(NAN);
     } else {
         TOF1_arr.push_back(TOF1);
@@ -34,7 +34,7 @@ void TOFProcessor::process(float TOF1, float TOF2) {
     TOF1_flag = !allNaN(TOF1_arr);
 
     // Handle TOF2
-    if (TOF2 == 8191 || TOF2 == -1) {
+    if (TOF2 > 2000 || TOF2 == -1) {
         TOF2_arr.push_back(NAN);
     } else {
         TOF2_arr.push_back(TOF2);

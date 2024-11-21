@@ -1,27 +1,46 @@
-#include "Adafruit_VL53L0X.h"
+#include <Arduino.h>
 #include <Wire.h>
+#include <vl53l4cx_class.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <Adafruit_AMG88xx.h>
+#include "TOFProcessor.h"
+
+#define DEV_I2C Wire
 
 // address we will assign if dual sensor is present
-#define LOX1_ADDRESS 0x30
-#define LOX2_ADDRESS 0x31
+#define L4CX1_ADDRESS 0x29
+#define L4CX2_ADDRESS 0x31
 
 // set the pins to shutdown
-#define SHT_LOX1 0
-#define SHT_LOX2 4
+#define SHT_L4CX1 0
+#define SHT_L4CX2 4
 
 Adafruit_AMG88xx amg;
 
 float pixels[AMG88xx_PIXEL_ARRAY_SIZE];
 
-// objects for the vl53l0x
-Adafruit_VL53L0X lox = Adafruit_VL53L0X();
-Adafruit_VL53L0X lox1 = Adafruit_VL53L0X();
-Adafruit_VL53L0X lox2 = Adafruit_VL53L0X();
+// objects for the TOF sensors
+VL53L4CX l4cx1(&DEV_I2C, SHT_L4CX1);
+VL53L4CX l4cx2(&DEV_I2C, SHT_L4CX2);
 
-// this holds the measurement
-VL53L0X_RangingMeasurementData_t measure1;
-VL53L0X_RangingMeasurementData_t measure2;
+VL53L4CX_MultiRangingData_t MultiRangingData1;
+VL53L4CX_MultiRangingData_t *pMultiRangingData1 = &MultiRangingData1;
+uint8_t NewDataReady1 = 0;
+int no_of_object_found1 = 0;
+int status1;
+
+VL53L4CX_MultiRangingData_t MultiRangingData2;
+VL53L4CX_MultiRangingData_t *pMultiRangingData2 = &MultiRangingData2;
+uint8_t NewDataReady2 = 0;
+int no_of_object_found2 = 0;
+int status2;
+
+TOFProcessor tofprocessor;
 
 /*
     Reset all sensors by setting all of their XSHUT pins low for delay(10), then set all XSHUT high to bring out of reset
@@ -32,85 +51,101 @@ VL53L0X_RangingMeasurementData_t measure2;
     Initialize sensor #2 with lox.begin(new_i2c_address) Pick any number but 0x29 and whatever you set the first sensor to
  */
 void setID() {
-  // all reset
-  digitalWrite(SHT_LOX1, LOW);    
-  digitalWrite(SHT_LOX2, LOW);
-  delay(10);
-  // all unreset
-  digitalWrite(SHT_LOX1, HIGH);
-  digitalWrite(SHT_LOX2, HIGH);
+  digitalWrite(SHT_L4CX1, LOW);
+  digitalWrite(SHT_L4CX2, LOW);
   delay(10);
 
-  // activating LOX1 and resetting LOX2
-  digitalWrite(SHT_LOX1, HIGH);
-  digitalWrite(SHT_LOX2, LOW);
-
-  // initing LOX1
-  if(!lox1.begin(LOX1_ADDRESS)) {
-    Serial.println(F("Failed to boot first VL53L0X"));
-    while(1);
-  }
+  digitalWrite(SHT_L4CX1, HIGH);
   delay(10);
 
-  // activating LOX2
-  digitalWrite(SHT_LOX2, HIGH);
+  // Configure VL53L4CX satellite component.
+  l4cx1.begin();
+
+  // Switch off VL53L4CX satellite component.
+  l4cx1.VL53L4CX_Off();
+
+  //Initialize VL53L4CX satellite component.
+  l4cx1.InitSensor(L4CX1_ADDRESS);
+  l4cx1.VL53L4CX_SetDeviceAddress(L4CX1_ADDRESS);
+
+
+  digitalWrite(SHT_L4CX2, HIGH);
   delay(10);
 
-  //initing LOX2
-  if(!lox2.begin(LOX2_ADDRESS)) {
-    Serial.println(F("Failed to boot second VL53L0X"));
-    while(1);
-  }
+  // Configure VL53L4CX satellite component.
+  l4cx2.begin();
+
+  // Switch off VL53L4CX satellite component.
+  l4cx2.VL53L4CX_Off();
+
+  //Initialize VL53L4CX satellite component.
+  l4cx2.InitSensor(L4CX2_ADDRESS);
+  l4cx2.VL53L4CX_SetDeviceAddress(L4CX2_ADDRESS);
+
+  delay(10);
 }
 
-void read_dual_sensors() {
-  
-  lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
-  lox2.rangingTest(&measure2, false); // pass in 'true' to get debug data printout!
+void read_dual_sensors(float &TOF1, float &TOF2) {
+  //sensing TOF1
+  do {
+    status1 = l4cx1.VL53L4CX_GetMeasurementDataReady(&NewDataReady1);
+  } while (!NewDataReady1);
 
-  // print sensor one reading
-  //Serial.print(F("1: "));
-  if(measure1.RangeStatus != 4) {     // if not out of range
-    Serial.print(measure1.RangeMilliMeter);
-  } else {
-    Serial.print(-1);
+  if ((!status1) && (NewDataReady1 != 0)) {
+    status1 = l4cx1.VL53L4CX_GetMultiRangingData(pMultiRangingData1);
+    no_of_object_found1 = pMultiRangingData1->NumberOfObjectsFound;
+    if (no_of_object_found1 == 0) {
+      TOF1 = -1;
+    }
+    else {
+      TOF1 = pMultiRangingData1->RangeData[0].RangeMilliMeter;
+      //maybe check status???
+    }
+    if (status1 == 0) {
+      status1 = l4cx1.VL53L4CX_ClearInterruptAndStartMeasurement();
+    }
   }
-  
-  //Serial.print(F(" "));
-  Serial.print(",");
 
-  // print sensor two reading
-  //Serial.print(F("2: "));
-  if(measure2.RangeStatus != 4) {
-    Serial.print(measure2.RangeMilliMeter);
-  } else {
-    Serial.print(-1);
+
+  //sensing TOF2
+  do {
+    status2 = l4cx2.VL53L4CX_GetMeasurementDataReady(&NewDataReady2);
+  } while (!NewDataReady2);
+
+  if ((!status2) && (NewDataReady2 != 0)) {
+    status2 = l4cx2.VL53L4CX_GetMultiRangingData(pMultiRangingData2);
+    no_of_object_found2 = pMultiRangingData2->NumberOfObjectsFound;
+    if (no_of_object_found2 == 0) {
+      TOF2 = -1;
+    }
+    else {
+      TOF2 = pMultiRangingData2->RangeData[0].RangeMilliMeter;
+      //maybe check status???
+    }
+    if (status2 == 0) {
+      status2 = l4cx2.VL53L4CX_ClearInterruptAndStartMeasurement();
+    }
   }
-  
-  //Serial.println();
 }
 
 void setup() {
+  // put your setup code here, to run once:
   Serial.begin(9600);
+  //Serial.println("Starting...");
   
   // wait until serial port opens for native USB devices
   while (! Serial) {
     delay(1);
   }
-  
-  pinMode(SHT_LOX1, OUTPUT);
-  pinMode(SHT_LOX2, OUTPUT);
 
-  digitalWrite(SHT_LOX1, LOW);
-  digitalWrite(SHT_LOX2, LOW);
+  DEV_I2C.begin();
+
+  pinMode(SHT_L4CX1, OUTPUT);
+  pinMode(SHT_L4CX2, OUTPUT);
 
   setID();
 
-  //Serial.println("Adafruit VL53L0X test");
-  /*if (!lox.begin()) {
-    Serial.println(F("Failed to boot VL53L0X"));
-    while(1);
-  }*/
+  
   /*bool status;
   status = amg.begin();
   if (!status) {
@@ -118,30 +153,28 @@ void setup() {
       while (1);
   }*/
     
-  // power 
-  //Serial.println(F("VL53L0X API Simple Ranging example\n\n")); 
+  l4cx1.VL53L4CX_StartMeasurement();
+  l4cx2.VL53L4CX_StartMeasurement();
+
+
   delay(100);
 }
 
 
 void loop() {
-  //VL53L0X_RangingMeasurementData_t measure;
+  // put your main code here, to run repeatedly:
+  float TOF1;
+  float TOF2;
+  read_dual_sensors(TOF1, TOF2);
+  Serial.print(TOF1);
+  Serial.print("     ");
+  Serial.print(TOF2);
+  Serial.print("     ");
 
-  read_dual_sensors();
-    
-  //Serial.print("Reading a measurement... ");
-  /*lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
-
-  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
-    //Serial.print("Distance (mm): ");
-    Serial.print(measure.RangeMilliMeter);
-
-  } else {
-    Serial.print(-1);
-  }*/
-  //Serial.print(",");
-
-    
+  tofprocessor.process(TOF1, TOF2);
+  Serial.print("number of people in the room: ");
+  Serial.println(tofprocessor.numPeople);
+  
   //read all the pixels
   /*amg.readPixels(pixels);
 
@@ -153,8 +186,7 @@ void loop() {
     }
   }*/
   //Serial.println("]");
-  Serial.println();
 
   //delay a second
-  delay(10);
+  delay(100);
 }
