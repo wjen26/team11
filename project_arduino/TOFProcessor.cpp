@@ -23,6 +23,26 @@ void TOFProcessor::clearWithFlag() {
     Serial.println("Cleared TOF flags");
 }
 
+void TOFProcessor::Buffer_clear() {
+  TOF1_arr.clear();
+  TOF2_arr.clear();
+  buffer_timerStart = millis();
+  buffer_timerRunning = true;
+}
+
+void TOFProcessor::clear() {
+  TOF1_arr.clear();
+  TOF2_arr.clear();
+  if (TOF1_timerRunning) {
+    Serial.println("canceled TOF1 flag timer");
+  }
+  if (TOF2_timerRunning) {
+    Serial.println("canceled TOF2 flag timer");
+  }
+  TOF1_timerRunning = false;
+  TOF2_timerRunning = false;
+}
+
 // Process incoming TOF data
 void TOFProcessor::process(float TOF1, float TOF2) {
     // Handle TOF1
@@ -59,6 +79,11 @@ void TOFProcessor::process(float TOF1, float TOF2) {
         clearWithFlag();
     }
 
+    // Check second buffer clear
+    if (buffer_timerRunning && millis() - buffer_timerStart > 1000) {
+      clear();
+    }
+
     // Process person detection
     if (TOF1_flag && TOF2_flag) {
         int minTOF1_index = -1, minTOF2_index = -1;
@@ -86,8 +111,9 @@ void TOFProcessor::process(float TOF1, float TOF2) {
             Serial.println("Person exiting");
             numPeople--;
         }
-
-        clearWithFlag();
+        TOF1_flag = false;
+        TOF2_flag = false;
+        Buffer_clear();
     }
 }
 

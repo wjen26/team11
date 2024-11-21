@@ -97,9 +97,12 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
     if (no_of_object_found1 == 0) {
       TOF1 = -1;
     }
-    else {
+    else if (pMultiRangingData1->RangeData[0].RangeStatus == 0) {
       TOF1 = pMultiRangingData1->RangeData[0].RangeMilliMeter;
       //maybe check status???
+    }
+    else {
+      TOF1 = -1;
     }
     if (status1 == 0) {
       status1 = l4cx1.VL53L4CX_ClearInterruptAndStartMeasurement();
@@ -118,9 +121,12 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
     if (no_of_object_found2 == 0) {
       TOF2 = -1;
     }
-    else {
+    else if (pMultiRangingData2->RangeData[0].RangeStatus == 0) {
       TOF2 = pMultiRangingData2->RangeData[0].RangeMilliMeter;
       //maybe check status???
+    }
+    else {
+      TOF2 = -1;
     }
     if (status2 == 0) {
       status2 = l4cx2.VL53L4CX_ClearInterruptAndStartMeasurement();
@@ -186,6 +192,8 @@ void loop() {
     }
   }*/
   //Serial.println("]");
+
+  //tofprocessor.printStatus();
 
   //delay a second
   delay(100);
