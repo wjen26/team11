@@ -11,18 +11,24 @@ private:
 
     unsigned long TOF1_timerStart = 0;
     unsigned long TOF2_timerStart = 0;
+    unsigned long buffer_timerStart = 0;
     const unsigned long flagClearTimeout = 5000; // 5 seconds
 
     bool TOF1_flag = false;
     bool TOF2_flag = false;
     bool TOF1_timerRunning = false;
     bool TOF2_timerRunning = false;
+    bool buffer_timerRunning = false;
 
     // Check if all values in a vector are NaN
     bool allNaN(const std::vector<float>& vec);
 
     // Clear flags and arrays
     void clearWithFlag();
+
+    void Buffer_clear();
+
+    void clear();
 
 public:
     int numPeople = 0;
