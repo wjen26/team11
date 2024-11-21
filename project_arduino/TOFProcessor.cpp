@@ -90,3 +90,54 @@ void TOFProcessor::process(float TOF1, float TOF2) {
         clearWithFlag();
     }
 }
+
+// Print the status of all member variables
+void TOFProcessor::printStatus() {
+    Serial.println("---- TOFProcessor Status ----");
+
+    // Print TOF1 array
+    Serial.print("TOF1_arr: ");
+    for (float val : TOF1_arr) {
+        if (isnan(val)) {
+            Serial.print("NaN ");
+        } else {
+            Serial.print(val);
+            Serial.print(" ");
+        }
+    }
+    Serial.println();
+
+    // Print TOF2 array
+    Serial.print("TOF2_arr: ");
+    for (float val : TOF2_arr) {
+        if (isnan(val)) {
+            Serial.print("NaN ");
+        } else {
+            Serial.print(val);
+            Serial.print(" ");
+        }
+    }
+    Serial.println();
+
+    // Print flags and timers
+    Serial.print("TOF1_flag: ");
+    Serial.println(TOF1_flag);
+    Serial.print("TOF2_flag: ");
+    Serial.println(TOF2_flag);
+    Serial.print("TOF1_timerRunning: ");
+    Serial.println(TOF1_timerRunning);
+    Serial.print("TOF2_timerRunning: ");
+    Serial.println(TOF2_timerRunning);
+
+    // Print timers
+    Serial.print("TOF1_timerStart: ");
+    Serial.println(TOF1_timerStart);
+    Serial.print("TOF2_timerStart: ");
+    Serial.println(TOF2_timerStart);
+
+    // Print number of people
+    Serial.print("numPeople: ");
+    Serial.println(numPeople);
+
+    Serial.println("-----------------------------");
+}

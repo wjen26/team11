@@ -32,6 +32,9 @@ public:
 
     // Process incoming TOF data
     void process(float TOF1, float TOF2);
+
+    // Print the status of all member variables
+    void printStatus();
 };
 
 #endif // TOF_PROCESSOR_H
