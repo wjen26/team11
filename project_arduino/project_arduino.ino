@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <Adafruit_AMG88xx.h>
 #include "TOFProcessor.h"
+#include "TOFStateMachine.h"
 
 #define DEV_I2C Wire
 
@@ -40,7 +41,11 @@ uint8_t NewDataReady2 = 0;
 int no_of_object_found2 = 0;
 int status2;
 
+bool TOF1_flag = false;
+bool TOF2_flag = false;
+
 TOFProcessor tofprocessor;
+TOFStateMachine tofstatemachine;
 
 /*
     Reset all sensors by setting all of their XSHUT pins low for delay(10), then set all XSHUT high to bring out of reset
@@ -102,7 +107,7 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
       //maybe check status???
     }
     else {
-      TOF1 = -1;
+      TOF1 = -2;
     }
     if (status1 == 0) {
       status1 = l4cx1.VL53L4CX_ClearInterruptAndStartMeasurement();
@@ -126,7 +131,7 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
       //maybe check status???
     }
     else {
-      TOF2 = -1;
+      TOF2 = -2;
     }
     if (status2 == 0) {
       status2 = l4cx2.VL53L4CX_ClearInterruptAndStartMeasurement();
@@ -172,15 +177,37 @@ void loop() {
   float TOF1;
   float TOF2;
   read_dual_sensors(TOF1, TOF2);
-  Serial.print(TOF1);
-  Serial.print("     ");
-  Serial.print(TOF2);
-  Serial.print("     ");
+  //Serial.print(TOF1);
+  //Serial.print("     ");
+  //Serial.print(TOF2);
+  //Serial.print("     ");
 
-  tofprocessor.process(TOF1, TOF2);
+  if (TOF1 == -1 || TOF1 > 2000) {
+    TOF1_flag = false;
+  }
+  else if (TOF1 != -2) {
+    TOF1_flag = true;
+  }
+  if (TOF2 == -1 || TOF2 > 2000) {
+    TOF2_flag = false;
+  }
+  else if (TOF2 != -2) {
+    TOF2_flag = true;
+  }
+  //Serial.print(TOF1_flag);
+  //Serial.print("     ");
+  //Serial.print(TOF2_flag);
+  //Serial.print("     ");
+
+  /*tofprocessor.process(TOF1, TOF2);
   Serial.print("number of people in the room: ");
-  Serial.println(tofprocessor.numPeople);
+  Serial.println(tofprocessor.numPeople);*/
   
+  tofstatemachine.updateState(TOF1_flag, TOF2_flag);
+  //tofstatemachine.printState();
+  //Serial.print("number of people in the room: ");
+  Serial.println(tofstatemachine.numPeople);
+
   //read all the pixels
   /*amg.readPixels(pixels);
 
@@ -196,5 +223,5 @@ void loop() {
   //tofprocessor.printStatus();
 
   //delay a second
-  delay(100);
+  delay(10);
 }
