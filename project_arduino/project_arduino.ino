@@ -10,6 +10,10 @@
 #include <Adafruit_AMG88xx.h>
 #include "TOFProcessor.h"
 #include "TOFStateMachine.h"
+#include "WirelessCommunication.h"
+#include "sharedVariable.h"
+#include "Preferences.h"
+
 
 #define DEV_I2C Wire
 
@@ -46,6 +50,9 @@ bool TOF2_flag = false;
 
 TOFProcessor tofprocessor;
 TOFStateMachine tofstatemachine;
+
+volatile uint32_t num_people = 0;
+volatile shared_uint32 x;
 
 /*
     Reset all sensors by setting all of their XSHUT pins low for delay(10), then set all XSHUT high to bring out of reset
@@ -167,6 +174,8 @@ void setup() {
   l4cx1.VL53L4CX_StartMeasurement();
   l4cx2.VL53L4CX_StartMeasurement();
 
+  init_wifi_task();
+  INIT_SHARED_VARIABLE(x, num_people);
 
   delay(100);
 }
@@ -206,7 +215,12 @@ void loop() {
   tofstatemachine.updateState(TOF1_flag, TOF2_flag);
   // tofstatemachine.printState();
   //Serial.print("number of people in the room: ");
-  Serial.println(tofstatemachine.numPeople);
+  if(num_people != tofstatemachine.numPeople)
+  {
+    num_people = tofstatemachine.numPeople;
+    Serial.println(num_people);
+    update_people_count();//update shared variable x (shared with WiFi task)
+  }
 
   //read all the pixels
   /*amg.readPixels(pixels);
@@ -223,5 +237,13 @@ void loop() {
   //tofprocessor.printStatus();
 
   //delay a second
-  delay(10);
+  //delay(10);
+}
+
+void update_people_count()
+{
+  //minimized time spend holding semaphore
+  LOCK_SHARED_VARIABLE(x);
+  x.value = num_people;
+  UNLOCK_SHARED_VARIABLE(x);   
 }

@@ -34,7 +34,10 @@ void loop()
   {
     ++num_people;
     update_people_count();//update shared variable x (shared with WiFi task)
-    flag != flag;
+    flag = false;
+  }
+  if (millis() % 5000 <= 2500 && !flag) {
+    flag  = true;
   }
   Serial.println(num_people);
 }

@@ -1,7 +1,7 @@
 #include "WirelessCommunication.h"
 
 //WiFi name and password, change the name to match your team, and choose your own password
-#define STASSID "team0000"
+#define STASSID "team0011"
 #define STAPSK "testPassword"
 
 //uncomment following line to enable the debug outpus associated with wifi stuff over serial
