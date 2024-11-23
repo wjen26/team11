@@ -3,16 +3,16 @@
 #define BUTTON_PIN 0//boot button
 
 void IRAM_ATTR reset_req_TSR();
-void measure_delta_time(uint32_t len);//TODO: modify this function (found below) to print
-                                     //max, and min delta times in addition to the current one
+// void measure_delta_time(uint32_t len);//TODO: modify this function (found below) to print
+//                                      //max, and min delta times in addition to the current one
 
 const char *ssid = "team0011";  // TODO: Fill in with team number, must match in client sketch
 const char *password = "testPassword";  // At least 8 chars, must match in client sketch
 
 WiFiServer server(80);
-volatile uint32_t count = 0;
+volatile int count = 0;
 volatile uint32_t resetRequestFlag = 0;
-volatile uint32_t lastResetTime = 0;
+// volatile uint32_t lastResetTime = 0;
 volatile uint32_t isFirstMeasurement = 1;
 
 void setup()
@@ -36,7 +36,7 @@ void setup()
   // Built-in button, active low
   pinMode(BUTTON_PIN, INPUT);
   attachInterrupt(BUTTON_PIN, reset_req_TSR, FALLING);
-  lastResetTime = millis();
+  // lastResetTime = millis();
 }
 
 void loop()
@@ -52,7 +52,7 @@ void loop()
       //note that if the received line starts with '-', '+', or '#', the code will assume we are decrementing, incrementing, or setting the count, respectively
       //recieved lines starting with any other character will be printed to the serial monitor
       //more cases can be added
-      measure_delta_time(line.length());//comment this out if you don't want to see this info printed
+      // measure_delta_time(line.length());//comment this out if you don't want to see this info printed
       switch(line[0])
       {
         case '-'  : Serial.printf("updated count: %u\r\n", --count);
@@ -71,7 +71,7 @@ void loop()
       {
         client.print("r\n");
         Serial.println("client reset!");
-        lastResetTime = millis(); 
+        // lastResetTime = millis(); 
       }
       else client.print("\n");//print something to client so it doesn't have to wait for entirety of timeout when checking for reset
       client.stop();
@@ -88,25 +88,25 @@ void IRAM_ATTR reset_req_TSR()
 
 //TODO: modify this function to print max, and min delta times instead of current ones
 //if length is > 0 (in other words. not empty String) calculate dela time and print
-void measure_delta_time(uint32_t len)
-{
-  static uint32_t dt_max = 0;
-  static uint32_t dt_min = 8000;
-  static uint32_t prevTime = 0;
-  uint32_t currTime = millis();
-  if(len && !isFirstMeasurement && !resetRequestFlag)
-  {
-    uint32_t deltaTime = currTime - prevTime;
-    if (deltaTime < dt_min) {
-      dt_min = deltaTime;
-    }
-    if (deltaTime > dt_max) {
-      dt_max = deltaTime;
-    }
-    Serial.printf("Delta time: %u ms\r\n", (uint32_t) deltaTime);
-    Serial.printf("Delta time min: %u ms\r\n", (uint32_t) dt_min);
-    Serial.printf("Delta time max: %u ms\r\n", (uint32_t) dt_max);
-  }
-  isFirstMeasurement = 0;
-  prevTime = currTime;
-}
+// void measure_delta_time(uint32_t len)
+// {
+//   static uint32_t dt_max = 0;
+//   static uint32_t dt_min = 8000;
+//   static uint32_t prevTime = 0;
+//   uint32_t currTime = millis();
+//   if(len && !isFirstMeasurement && !resetRequestFlag)
+//   {
+//     uint32_t deltaTime = currTime - prevTime;
+//     if (deltaTime < dt_min) {
+//       dt_min = deltaTime;
+//     }
+//     if (deltaTime > dt_max) {
+//       dt_max = deltaTime;
+//     }
+//     Serial.printf("Delta time: %u ms\r\n", (uint32_t) deltaTime);
+//     Serial.printf("Delta time min: %u ms\r\n", (uint32_t) dt_min);
+//     Serial.printf("Delta time max: %u ms\r\n", (uint32_t) dt_max);
+//   }
+//   isFirstMeasurement = 0;
+//   prevTime = currTime;
+// }
