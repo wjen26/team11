@@ -177,10 +177,10 @@ void loop() {
   float TOF1;
   float TOF2;
   read_dual_sensors(TOF1, TOF2);
-  //Serial.print(TOF1);
-  //Serial.print("     ");
-  //Serial.print(TOF2);
-  //Serial.print("     ");
+  // Serial.print(TOF1);
+  // Serial.print("     ");
+  // Serial.print(TOF2);
+  // Serial.print("     ");
 
   if (TOF1 == -1 || TOF1 > 2000) {
     TOF1_flag = false;
@@ -194,17 +194,17 @@ void loop() {
   else if (TOF2 != -2) {
     TOF2_flag = true;
   }
-  //Serial.print(TOF1_flag);
-  //Serial.print("     ");
-  //Serial.print(TOF2_flag);
-  //Serial.print("     ");
+  // Serial.print(TOF1_flag);
+  // Serial.print("     ");
+  // Serial.print(TOF2_flag);
+  // Serial.print("     ");
 
   /*tofprocessor.process(TOF1, TOF2);
   Serial.print("number of people in the room: ");
   Serial.println(tofprocessor.numPeople);*/
   
   tofstatemachine.updateState(TOF1_flag, TOF2_flag);
-  //tofstatemachine.printState();
+  // tofstatemachine.printState();
   //Serial.print("number of people in the room: ");
   Serial.println(tofstatemachine.numPeople);
 
