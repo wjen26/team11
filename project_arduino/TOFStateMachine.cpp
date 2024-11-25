@@ -12,7 +12,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             else if (TOF1_flag == false && TOF2_flag == true)
                 currentState = TOFState::EXIT1;
             else if (TOF1_flag == true && TOF2_flag == true)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe two in opposite?
             else if (TOF1_flag == false && TOF2_flag == false)
                 currentState = currentState;
             break;
@@ -20,9 +20,9 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             if (TOF1_flag == true && TOF2_flag == false)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == true)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe just go to enter 3??
             else if (TOF1_flag == true && TOF2_flag == true)
-                currentState = TOFState::ENTER2;
+                currentState = TOFState::ENTER2; //check for how many people there, if two go to conga state
             else if (TOF1_flag == false && TOF2_flag == false)
                 currentState = TOFState::RESET;
             break;
@@ -34,11 +34,11 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             else if (TOF1_flag == true && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == false)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe just increment?? actually no could have gone either way
             break;
         case TOFState::ENTER3:
             if (TOF1_flag == true && TOF2_flag == false)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe just back to enter 1
             else if (TOF1_flag == false && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == true && TOF2_flag == true)
@@ -52,11 +52,11 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             break;
         case TOFState::EXIT1:
             if (TOF1_flag == true && TOF2_flag == false)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe just go to exit3
             else if (TOF1_flag == false && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == true && TOF2_flag == true)
-                currentState = TOFState::EXIT2;
+                currentState = TOFState::EXIT2; //go to conga (exit) probably need two conga states thinking about it
             else if (TOF1_flag == false && TOF2_flag == false)
                 currentState = TOFState::RESET;
             break;
@@ -68,13 +68,13 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             else if (TOF1_flag == true && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == false)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //same problem as enter2
             break;
         case TOFState::EXIT3:
             if (TOF1_flag == true && TOF2_flag == false)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == true)
-                currentState = TOFState::INVALID;
+                currentState = TOFState::INVALID; //maybe just go back to exit 1
             else if (TOF1_flag == true && TOF2_flag == true)
                 currentState = TOFState::EXIT2;
             else if (TOF1_flag == false && TOF2_flag == false)
@@ -85,7 +85,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             currentState = TOFState::RESET;
             break;
         case TOFState::INVALID:
-            //idk :sob:
+            //need to figure out what to do with this
             currentState = TOFState::RESET;
             break;
     }
