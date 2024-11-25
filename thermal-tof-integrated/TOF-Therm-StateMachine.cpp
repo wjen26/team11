@@ -90,7 +90,8 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag, int num_therm)
             currentState = TOFState::RESET;
             break;
         case TOFState::EDGE_CASE: // THIS IS WHERE I NEED TO EDIT
-
+            
+            break;
         case TOFState::INVALID:
             //need to figure out what to do with this
             currentState = TOFState::RESET;
