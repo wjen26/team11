@@ -20,7 +20,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             if (TOF1_flag == true && TOF2_flag == false)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == true)
-                currentState = TOFState::INVALID; //maybe just go to enter 3??
+                currentState = TOFState::ENTER3; //maybe just go to enter 3??
             else if (TOF1_flag == true && TOF2_flag == true)
                 currentState = TOFState::ENTER2; //check for how many people there, if two go to conga state
             else if (TOF1_flag == false && TOF2_flag == false)
@@ -38,7 +38,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             break;
         case TOFState::ENTER3:
             if (TOF1_flag == true && TOF2_flag == false)
-                currentState = TOFState::INVALID; //maybe just back to enter 1
+                currentState = TOFState::ENTER1; //maybe just back to enter 1
             else if (TOF1_flag == false && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == true && TOF2_flag == true)
@@ -52,7 +52,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             break;
         case TOFState::EXIT1:
             if (TOF1_flag == true && TOF2_flag == false)
-                currentState = TOFState::INVALID; //maybe just go to exit3
+                currentState = TOFState::EXIT3; //maybe just go to exit3
             else if (TOF1_flag == false && TOF2_flag == true)
                 currentState = currentState;
             else if (TOF1_flag == true && TOF2_flag == true)
@@ -74,7 +74,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag) {
             if (TOF1_flag == true && TOF2_flag == false)
                 currentState = currentState;
             else if (TOF1_flag == false && TOF2_flag == true)
-                currentState = TOFState::INVALID; //maybe just go back to exit 1
+                currentState = TOFState::ENTER1; //maybe just go back to exit 1
             else if (TOF1_flag == true && TOF2_flag == true)
                 currentState = TOFState::EXIT2;
             else if (TOF1_flag == false && TOF2_flag == false)

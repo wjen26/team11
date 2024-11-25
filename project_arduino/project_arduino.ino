@@ -48,6 +48,9 @@ int status2;
 bool TOF1_flag = false;
 bool TOF2_flag = false;
 
+int invalid1 = 0;
+int invalid2 = 0;
+
 TOFProcessor tofprocessor;
 TOFStateMachine tofstatemachine;
 
@@ -193,15 +196,33 @@ void loop() {
 
   if (TOF1 == -1 || TOF1 > 2000) {
     TOF1_flag = false;
+    invalid1 = 0;
   }
   else if (TOF1 != -2) {
     TOF1_flag = true;
+    invalid1 = 0;
+  }
+  else if (invalid1 > 3) {
+    TOF1_flag = false;
+    invalid1++;
+  }
+  else {
+    invalid1++;
   }
   if (TOF2 == -1 || TOF2 > 2000) {
     TOF2_flag = false;
+    invalid2 = 0;
   }
   else if (TOF2 != -2) {
     TOF2_flag = true;
+    invalid2 = 0;
+  }
+  else if (invalid2 > 3) {
+    TOF2_flag = false;
+    invalid2++;
+  }
+  else {
+    invalid2++;
   }
   // Serial.print(TOF1_flag);
   // Serial.print("     ");
@@ -214,7 +235,8 @@ void loop() {
   
   tofstatemachine.updateState(TOF1_flag, TOF2_flag);
   // tofstatemachine.printState();
-  //Serial.print("number of people in the room: ");
+  // Serial.print("number of people in the room: ");
+  // Serial.println(tofstatemachine.numPeople);
   if(num_people != tofstatemachine.numPeople)
   {
     num_people = tofstatemachine.numPeople;
@@ -237,7 +259,8 @@ void loop() {
   //tofprocessor.printStatus();
 
   //delay a second
-  //delay(10);
+  // Serial.println();
+  delay(10);
 }
 
 void update_people_count()
