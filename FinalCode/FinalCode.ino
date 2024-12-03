@@ -158,7 +158,9 @@ bool flag1_Ent = false;  // Indicates if a person was previously detected
 bool flag2_Ent = false;  // Indicates if two people were previously detected
 bool flag1_Ext = false;  // Indicates if a person was previously detected
 bool flag2_Ext = false;  // Indicates if two people were previously detected
-int person_count = 0;
+
+volatile uint32_t person_count = 0;
+volatile shared_uint32 x;
 
 // RTOS Task Handles
 TaskHandle_t thermalTaskHandle;
@@ -183,6 +185,9 @@ void setup() {
     
   l4cx1.VL53L4CX_StartMeasurement();
   l4cx2.VL53L4CX_StartMeasurement();
+
+  init_wifi_task();
+  INIT_SHARED_VARIABLE(x, person_count);
 
   // Create a task for thermal data processing
   xTaskCreatePinnedToCore(
@@ -314,6 +319,7 @@ void processData(void *param) {
         } else {
           person_count++;
         }
+        update_people_count();//update shared variable x (shared with WiFi task)
         flag2_Ent = false;  // Reset the two-person flag
       } else {
         // Person is still present
@@ -369,6 +375,7 @@ void processData(void *param) {
         } else {
           person_count--;
         }
+        update_people_count();//update shared variable x (shared with WiFi task)
         flag2_Ext = false;  // Reset the two-person flag
       } else {
         // Person is still present
@@ -444,6 +451,7 @@ void detectTwoPeopleEntering(float *topPixels) {
     if (flag2_Ent) {
       // Serial.println("Uh oh......    ");
       person_count++;  // Increment count for one person leaving
+      update_people_count();//update shared variable x (shared with WiFi task)
     }
     flag2_Ent = false;  // Reset the two-person flag
   }
@@ -471,6 +479,7 @@ void detectTwoPeopleExiting(float *bottomPixels) {
     if (flag2_Ext) {
       //Serial.println("Uh oh......    ");
       person_count--;  // Increment count for one person leaving
+      update_people_count();//update shared variable x (shared with WiFi task)
     }
     flag2_Ext = false;  // Reset the two-person flag
   }
@@ -479,4 +488,12 @@ void detectTwoPeopleExiting(float *bottomPixels) {
 float applyEquation(float Tsa) {
   // Apply the optimized temperature conversion equation
   return pow(pow(Tsa + 273.15f, 4) + (15.0 * (Tsa - Tamb)) / (5.67e-8 * 0.98), 0.25f) - 273.15f;
+}
+
+void update_people_count()
+{
+  //minimized time spend holding semaphore
+  LOCK_SHARED_VARIABLE(x);
+  x.value = num_people;
+  UNLOCK_SHARED_VARIABLE(x);   
 }
