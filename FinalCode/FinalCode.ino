@@ -19,8 +19,8 @@
 #define L4CX2_ADDRESS 0x31
 
 // set the pins to shutdown
-#define SHT_L4CX1 0
-#define SHT_L4CX2 4
+#define SHT_L4CX1 4
+#define SHT_L4CX2 0
 
 Adafruit_AMG88xx amg;
 
@@ -47,6 +47,13 @@ bool TOF2_flag = false;
 bool TOF1_flag_prev = false;
 bool TOF2_flag_prev = false;
 
+int invalid1 = 0;
+int invalid2 = 0;
+
+bool thermal_entering = false;
+bool thermal_exiting = false;
+int thermal_entering_counter = 0;
+int thermal_exiting_counter = 0;
 
 /*
     Reset all sensors by setting all of their XSHUT pins low for delay(10), then set all XSHUT high to bring out of reset
@@ -141,7 +148,7 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
 }
 
 // Constants
-const float TH2 = 35.0;  // Mean threshold for detecting two people
+const float TH2 = 38.0;  // Mean threshold for detecting two people
 const float PERSON_TEMP_THRESHOLD = 34.0;
 const float Tamb = 18.91;
 
@@ -171,13 +178,6 @@ void setup() {
 
   setID();
 
-  
-  /*bool status;
-  status = amg.begin();
-  if (!status) {
-      Serial.println("Could not find a valid AMG88xx sensor, check wiring!");
-      while (1);
-  }*/
     
   l4cx1.VL53L4CX_StartMeasurement();
   l4cx2.VL53L4CX_StartMeasurement();
@@ -212,14 +212,17 @@ void processData(void *param) {
   // Serial.print("     ");
 
   if (TOF1 == -1 || TOF1 > 2000) {
+    TOF1_flag_prev = TOF1_flag;
     TOF1_flag = false;
     invalid1 = 0;
   }
   else if (TOF1 != -2) {
+    TOF1_flag_prev = TOF1_flag;
     TOF1_flag = true;
     invalid1 = 0;
   }
   else if (invalid1 > 3) {
+    TOF1_flag_prev = TOF1_flag;
     TOF1_flag = false;
     invalid1++;
   }
@@ -227,30 +230,57 @@ void processData(void *param) {
     invalid1++;
   }
   if (TOF2 == -1 || TOF2 > 2000) {
+    TOF2_flag_prev = TOF2_flag;
     TOF2_flag = false;
     invalid2 = 0;
   }
   else if (TOF2 != -2) {
+    TOF2_flag_prev = TOF2_flag;
     TOF2_flag = true;
     invalid2 = 0;
   }
   else if (invalid2 > 3) {
+    TOF2_flag_prev = TOF2_flag;
     TOF2_flag = false;
     invalid2++;
   }
   else {
     invalid2++;
   }
-  // Serial.print(TOF1_flag);
-  // Serial.print("     ");
-  // Serial.print(TOF2_flag);
-  // Serial.print("     ");
+  Serial.print(TOF1_flag);
+  Serial.print("     ");
+  Serial.print(TOF2_flag);
+  Serial.print("     ");
 
-  /*tofprocessor.process(TOF1, TOF2);
-  Serial.print("number of people in the room: ");
-  Serial.println(tofprocessor.numPeople);*/
+  if (!thermal_entering && !TOF1_flag_prev && !TOF2_flag_prev && TOF1_flag && !TOF2_flag) {
+    thermal_entering_counter = 0;
+    thermal_entering = true;
+  }
+  else if (thermal_entering && (thermal_entering_counter < 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
+    thermal_entering_counter++;
+  }
+  else if (thermal_entering && (thermal_entering_counter >= 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
+    thermal_entering_counter = 0;
+    thermal_entering = false;
+    flag1 = false;
+    flag2 = false;
+  }
+  else if (!thermal_exiting && !TOF1_flag_prev && !TOF2_flag_prev && !TOF1_flag && TOF2_flag) {
+    thermal_exiting_counter = 0;
+    thermal_exiting = true;
+  }
+  else if (thermal_exiting && (thermal_exiting_counter < 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
+    thermal_exiting_counter++;
+  }
+  else if (thermal_exiting && (thermal_exiting_counter >= 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
+    thermal_exiting_counter = 0;
+    thermal_exiting = false;
+    flag1 = false;
+    flag2 = false;
+  }
 
-
+  if (thermal_entering) {
+    Serial.print("Thermal Entering      ");
     // Read pixel data
     amg.readPixels(pixels);
 
@@ -262,6 +292,7 @@ void processData(void *param) {
 
     // Check for changes in presence and update the person count
     if (flag1) {
+      Serial.print("Previously there was a person there        ");
       // Check if a person is still present
       flag1 = false;
       for (int i = 0; i < 16; i++) {
@@ -273,6 +304,7 @@ void processData(void *param) {
 
       if (!flag1) {
         // Person(s) have left
+        Serial.println("The guy left crazy");
         if (flag2) {
           person_count += 2;
         } else {
@@ -281,11 +313,12 @@ void processData(void *param) {
         flag2 = false;  // Reset the two-person flag
       } else {
         // Person is still present
-        detectTwoPeople(topPixels);
+        Serial.print("The person is still there     ");
+        detectTwoPeopleEntering(topPixels);
       }
     } else {
       // No one was detected previously
-      Serial.println("There was nobody previously in the grid");
+      Serial.print("There was nobody previously in the grid           ");
       flag1 = false;
       for (int i = 0; i < 16; i++) {
         if (topPixels[i] > PERSON_TEMP_THRESHOLD) {
@@ -296,10 +329,65 @@ void processData(void *param) {
 
       if (flag1) {
         // A person is now detected
-        detectTwoPeople(topPixels);
+        detectTwoPeopleEntering(topPixels);
       }
     }
+  }
+  //if thermal exiting
+  else if (thermal_exiting) {
+    Serial.print("Thermal Exiting      ");
+    // Read pixel data
+    amg.readPixels(pixels);
 
+    // Process bottom 2 rows of the grid
+    float bottomPixels[16];
+    for (int i = 0; i < 16; i++) {
+      bottomPixels[i] = applyEquation(pixels[i + 48]);  // Convert raw temperatures
+    }
+
+    // Check for changes in presence and update the person count
+    if (flag1) {
+      Serial.print("Previously there was a person there        ");
+      // Check if a person is still present
+      flag1 = false;
+      for (int i = 0; i < 16; i++) {
+        if (bottomPixels[i] > PERSON_TEMP_THRESHOLD) {
+          flag1 = true;
+          break;
+        }
+      }
+
+      if (!flag1) {
+        // Person(s) have left
+        Serial.println("The guy left crazy");
+        if (flag2) {
+          person_count -= 2;
+        } else {
+          person_count--;
+        }
+        flag2 = false;  // Reset the two-person flag
+      } else {
+        // Person is still present
+        Serial.print("The person is still there     ");
+        detectTwoPeopleExiting(bottomPixels);
+      }
+    } else {
+      // No one was detected previously
+      Serial.print("There was nobody previously in the grid           ");
+      flag1 = false;
+      for (int i = 0; i < 16; i++) {
+        if (bottomPixels[i] > PERSON_TEMP_THRESHOLD) {
+          flag1 = true;
+          break;
+        }
+      }
+
+      if (flag1) {
+        // A person is now detected
+        detectTwoPeopleExiting(bottomPixels);
+      }
+    }
+  }
     // Print the current person count
     Serial.printf("Person Count: %d\n", person_count);
 
@@ -308,7 +396,29 @@ void processData(void *param) {
   }
 }
 
-void detectTwoPeople(float *topPixels) {
+void insertionSort(float arr[], int size) {
+  for (int i = 1; i < size; i++) {
+    float key = arr[i];
+    int j = i - 1;
+
+    // Move elements of arr[0..i-1], that are greater than key, to one position ahead
+    while (j >= 0 && arr[j] > key) {
+      arr[j + 1] = arr[j];
+      j--;
+    }
+    arr[j + 1] = key;
+  }
+}
+
+float calculateMean(float arr[], int size) {
+  float sum = 0.0f;
+  for (int i = 0; i < size; i++) {
+    sum += arr[i];
+  }
+  return sum / size;
+}
+
+void detectTwoPeopleEntering(float *topPixels) {
   // Sort the top half of the grid
   insertionSort(topPixels, 16);
 
@@ -323,34 +433,42 @@ void detectTwoPeople(float *topPixels) {
   Serial.println(mean);
 
   if (mean > TH2) {
+    Serial.println("Two people detected    ");
     flag2 = true;  // Two people are detected
   } else {
+    Serial.println("One person detected    ");
     if (flag2) {
+      Serial.println("Uh oh......    ");
       person_count++;  // Increment count for one person leaving
     }
     flag2 = false;  // Reset the two-person flag
   }
 }
 
-float calculateMean(float arr[], int size) {
-  float sum = 0.0f;
-  for (int i = 0; i < size; i++) {
-    sum += arr[i];
+void detectTwoPeopleExiting(float *bottomPixels) {
+  // Sort the bottom 2 rows of the grid
+  insertionSort(bottomPixels, 16);
+
+  // Calculate the mean of the top 8 highest temperatures
+  float top8[8];
+  for (int i = 0; i < 8; i++) {
+    top8[i] = bottomPixels[i + 8];
   }
-  return sum / size;
-}
+  float mean = calculateMean(top8, 8);
 
-void insertionSort(float arr[], int size) {
-  for (int i = 1; i < size; i++) {
-    float key = arr[i];
-    int j = i - 1;
+  Serial.print("Mean of top 8: ");
+  Serial.println(mean);
 
-    // Move elements of arr[0..i-1], that are greater than key, to one position ahead
-    while (j >= 0 && arr[j] > key) {
-      arr[j + 1] = arr[j];
-      j--;
+  if (mean > TH2) {
+    Serial.println("Two people detected    ");
+    flag2 = true;  // Two people are detected
+  } else {
+    Serial.println("One person detected    ");
+    if (flag2) {
+      Serial.println("Uh oh......    ");
+      person_count--;  // Increment count for one person leaving
     }
-    arr[j + 1] = key;
+    flag2 = false;  // Reset the two-person flag
   }
 }
 
