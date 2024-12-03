@@ -149,7 +149,7 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
 
 // Constants
 const float TH2 = 35.11;  // Mean threshold for detecting two people
-const float PERSON_TEMP_THRESHOLD = 28.0;
+const float PERSON_TEMP_THRESHOLD = 27.0;
 const float Tamb = 18.39;
 
 // Variables
@@ -249,10 +249,10 @@ void processData(void *param) {
   else {
     invalid2++;
   }
-  Serial.print(TOF1_flag);
-  Serial.print("     ");
-  Serial.print(TOF2_flag);
-  Serial.print("     ");
+  // Serial.print(TOF1_flag);
+  // Serial.print("     ");
+  // Serial.print(TOF2_flag);
+  // Serial.print("     ");
 
   if (!thermal_entering && !thermal_exiting && !TOF1_flag_prev && !TOF2_flag_prev && TOF1_flag && !TOF2_flag) {
     thermal_entering_counter = 0;
@@ -284,7 +284,7 @@ void processData(void *param) {
   }
 
   if (thermal_entering) {
-    Serial.print("Thermal Entering      ");
+    // Serial.print("Thermal Entering      ");
     // Read pixel data
     amg.readPixels(pixels);
 
@@ -339,7 +339,7 @@ void processData(void *param) {
   }
   //if thermal exiting
   if (thermal_exiting) {
-    Serial.print("Thermal Exiting      ");
+    // Serial.print("Thermal Exiting      ");
     // Read pixel data
     amg.readPixels(pixels);
 
@@ -433,8 +433,8 @@ void detectTwoPeopleEntering(float *topPixels) {
   }
   float mean = calculateMean(top8, 8);
 
-  Serial.print("Mean of top 8: ");
-  Serial.println(mean);
+  // Serial.print("Mean of top 8: ");
+  // Serial.println(mean);
 
   if (mean > TH2) {
     //Serial.println("Two people detected    ");
@@ -442,7 +442,7 @@ void detectTwoPeopleEntering(float *topPixels) {
   } else {
     //Serial.println("One person detected    ");
     if (flag2_Ent) {
-      Serial.println("Uh oh......    ");
+      // Serial.println("Uh oh......    ");
       person_count++;  // Increment count for one person leaving
     }
     flag2_Ent = false;  // Reset the two-person flag
