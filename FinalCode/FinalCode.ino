@@ -148,14 +148,16 @@ void read_dual_sensors(float &TOF1, float &TOF2) {
 }
 
 // Constants
-const float TH2 = 38.0;  // Mean threshold for detecting two people
-const float PERSON_TEMP_THRESHOLD = 34.0;
-const float Tamb = 18.91;
+const float TH2 = 35.11;  // Mean threshold for detecting two people
+const float PERSON_TEMP_THRESHOLD = 28.0;
+const float Tamb = 18.39;
 
 // Variables
 float pixels[AMG88xx_PIXEL_ARRAY_SIZE];
-bool flag1 = false;  // Indicates if a person was previously detected
-bool flag2 = false;  // Indicates if two people were previously detected
+bool flag1_Ent = false;  // Indicates if a person was previously detected
+bool flag2_Ent = false;  // Indicates if two people were previously detected
+bool flag1_Ext = false;  // Indicates if a person was previously detected
+bool flag2_Ext = false;  // Indicates if two people were previously detected
 int person_count = 0;
 
 // RTOS Task Handles
@@ -163,7 +165,7 @@ TaskHandle_t thermalTaskHandle;
 
 void setup() {
   Serial.begin(115200);
-
+  Wire.setClock(400000);
   // Initialize AMG8833 sensor
   if (!amg.begin()) {
     Serial.println("Could not find a valid AMG88xx sensor, check wiring!");
@@ -252,9 +254,10 @@ void processData(void *param) {
   Serial.print(TOF2_flag);
   Serial.print("     ");
 
-  if (!thermal_entering && !TOF1_flag_prev && !TOF2_flag_prev && TOF1_flag && !TOF2_flag) {
+  if (!thermal_entering && !thermal_exiting && !TOF1_flag_prev && !TOF2_flag_prev && TOF1_flag && !TOF2_flag) {
     thermal_entering_counter = 0;
     thermal_entering = true;
+    thermal_exiting = false;
   }
   else if (thermal_entering && (thermal_entering_counter < 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
     thermal_entering_counter++;
@@ -262,12 +265,13 @@ void processData(void *param) {
   else if (thermal_entering && (thermal_entering_counter >= 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
     thermal_entering_counter = 0;
     thermal_entering = false;
-    flag1 = false;
-    flag2 = false;
+    flag1_Ent = false;
+    flag2_Ent = false;
   }
-  else if (!thermal_exiting && !TOF1_flag_prev && !TOF2_flag_prev && !TOF1_flag && TOF2_flag) {
+  if (!thermal_exiting && !thermal_entering && !TOF1_flag_prev && !TOF2_flag_prev && !TOF1_flag && TOF2_flag) {
     thermal_exiting_counter = 0;
     thermal_exiting = true;
+    thermal_entering = false;
   }
   else if (thermal_exiting && (thermal_exiting_counter < 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
     thermal_exiting_counter++;
@@ -275,8 +279,8 @@ void processData(void *param) {
   else if (thermal_exiting && (thermal_exiting_counter >= 3) && !TOF1_flag && !TOF2_flag && !TOF1_flag_prev && !TOF2_flag_prev) {
     thermal_exiting_counter = 0;
     thermal_exiting = false;
-    flag1 = false;
-    flag2 = false;
+    flag1_Ext = false;
+    flag2_Ext = false;
   }
 
   if (thermal_entering) {
@@ -291,50 +295,50 @@ void processData(void *param) {
     }
 
     // Check for changes in presence and update the person count
-    if (flag1) {
-      Serial.print("Previously there was a person there        ");
+    if (flag1_Ent) {
+      //Serial.print("Previously there was a person there        ");
       // Check if a person is still present
-      flag1 = false;
+      flag1_Ent = false;
       for (int i = 0; i < 16; i++) {
         if (topPixels[i] > PERSON_TEMP_THRESHOLD) {
-          flag1 = true;
+          flag1_Ent = true;
           break;
         }
       }
 
-      if (!flag1) {
+      if (!flag1_Ent) {
         // Person(s) have left
-        Serial.println("The guy left crazy");
-        if (flag2) {
+       //Serial.println("The guy left crazy");
+        if (flag2_Ent) {
           person_count += 2;
         } else {
           person_count++;
         }
-        flag2 = false;  // Reset the two-person flag
+        flag2_Ent = false;  // Reset the two-person flag
       } else {
         // Person is still present
-        Serial.print("The person is still there     ");
+        //Serial.print("The person is still there     ");
         detectTwoPeopleEntering(topPixels);
       }
     } else {
       // No one was detected previously
-      Serial.print("There was nobody previously in the grid           ");
-      flag1 = false;
+     // Serial.print("There was nobody previously in the grid           ");
+      flag1_Ent = false;
       for (int i = 0; i < 16; i++) {
         if (topPixels[i] > PERSON_TEMP_THRESHOLD) {
-          flag1 = true;
+          flag1_Ent = true;
           break;
         }
       }
 
-      if (flag1) {
+      if (flag1_Ent) {
         // A person is now detected
         detectTwoPeopleEntering(topPixels);
       }
     }
   }
   //if thermal exiting
-  else if (thermal_exiting) {
+  if (thermal_exiting) {
     Serial.print("Thermal Exiting      ");
     // Read pixel data
     amg.readPixels(pixels);
@@ -346,43 +350,43 @@ void processData(void *param) {
     }
 
     // Check for changes in presence and update the person count
-    if (flag1) {
-      Serial.print("Previously there was a person there        ");
+    if (flag1_Ext) {
+      //Serial.print("Previously there was a person there        ");
       // Check if a person is still present
-      flag1 = false;
+      flag1_Ext = false;
       for (int i = 0; i < 16; i++) {
         if (bottomPixels[i] > PERSON_TEMP_THRESHOLD) {
-          flag1 = true;
+          flag1_Ext = true;
           break;
         }
       }
 
-      if (!flag1) {
+      if (!flag1_Ext) {
         // Person(s) have left
-        Serial.println("The guy left crazy");
-        if (flag2) {
+        //Serial.println("The guy left crazy");
+        if (flag2_Ext) {
           person_count -= 2;
         } else {
           person_count--;
         }
-        flag2 = false;  // Reset the two-person flag
+        flag2_Ext = false;  // Reset the two-person flag
       } else {
         // Person is still present
-        Serial.print("The person is still there     ");
+        //Serial.print("The person is still there     ");
         detectTwoPeopleExiting(bottomPixels);
       }
     } else {
       // No one was detected previously
-      Serial.print("There was nobody previously in the grid           ");
-      flag1 = false;
+      //Serial.print("There was nobody previously in the grid           ");
+      flag1_Ext = false;
       for (int i = 0; i < 16; i++) {
         if (bottomPixels[i] > PERSON_TEMP_THRESHOLD) {
-          flag1 = true;
+          flag1_Ext = true;
           break;
         }
       }
 
-      if (flag1) {
+      if (flag1_Ext) {
         // A person is now detected
         detectTwoPeopleExiting(bottomPixels);
       }
@@ -433,15 +437,15 @@ void detectTwoPeopleEntering(float *topPixels) {
   Serial.println(mean);
 
   if (mean > TH2) {
-    Serial.println("Two people detected    ");
-    flag2 = true;  // Two people are detected
+    //Serial.println("Two people detected    ");
+    flag2_Ent = true;  // Two people are detected
   } else {
-    Serial.println("One person detected    ");
-    if (flag2) {
+    //Serial.println("One person detected    ");
+    if (flag2_Ent) {
       Serial.println("Uh oh......    ");
       person_count++;  // Increment count for one person leaving
     }
-    flag2 = false;  // Reset the two-person flag
+    flag2_Ent = false;  // Reset the two-person flag
   }
 }
 
@@ -456,19 +460,19 @@ void detectTwoPeopleExiting(float *bottomPixels) {
   }
   float mean = calculateMean(top8, 8);
 
-  Serial.print("Mean of top 8: ");
-  Serial.println(mean);
+  //Serial.print("Mean of top 8: ");
+  //Serial.println(mean);
 
   if (mean > TH2) {
-    Serial.println("Two people detected    ");
-    flag2 = true;  // Two people are detected
+    //Serial.println("Two people detected    ");
+    flag2_Ext = true;  // Two people are detected
   } else {
-    Serial.println("One person detected    ");
-    if (flag2) {
-      Serial.println("Uh oh......    ");
+    //Serial.println("One person detected    ");
+    if (flag2_Ext) {
+      //Serial.println("Uh oh......    ");
       person_count--;  // Increment count for one person leaving
     }
-    flag2 = false;  // Reset the two-person flag
+    flag2_Ext = false;  // Reset the two-person flag
   }
 }
 
