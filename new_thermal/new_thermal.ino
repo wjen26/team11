@@ -8,9 +8,9 @@ float pixels[AMG88xx_PIXEL_ARRAY_SIZE];
 int cal_count = 0;
 
 
-const float h = 15.0;  // Convective heat transfer coefficient 
+const float h = 15.0;         // Convective heat transfer coefficient
 const float sigma = 5.67e-8;  // Stefan-Boltzmann constant (W/m^2·K^4)
-const float epsilon = 0.98;  // Emissivity (adjustable)
+const float epsilon = 0.98;   // Emissivity (adjustable)
 float Tamb;
 
 float means[20];
@@ -25,163 +25,164 @@ bool flag1 = false;
 bool flag2 = false;
 
 void setup() {
-    Serial.begin(9600);
-    //Serial.println(F("AMG88xx pixels"));
+  Serial.begin(9600);
+  //Serial.println(F("AMG88xx pixels"));
 
-    bool status;
-    
-    // default settings
-    status = amg.begin();
-    if (!status) {
-        Serial.println("Could not find a valid AMG88xx sensor, check wiring!");
-        while (1);
-    }
-    
-    //Serial.println("-- Pixels Test --");
+  bool status;
 
-    //Serial.println();
+  // default settings
+  status = amg.begin();
+  if (!status) {
+    Serial.println("Could not find a valid AMG88xx sensor, check wiring!");
+    while (1)
+      ;
+  }
 
-    delay(100); // let sensor boot up
+  //Serial.println("-- Pixels Test --");
+
+  //Serial.println();
+
+  delay(100);  // let sensor boot up
 }
 
 
-void loop() { 
-    //read all the pixels
-    amg.readPixels(pixels);
+void loop() {
+  //read all the pixels
+  amg.readPixels(pixels);
 
-    //setting Tamb
-    if (cal_count == 1) {
-      delay(5000);
-      Serial.println(cal_count);
-      Tamb = calculateMean(pixels, 64);
+  //setting Tamb
+  if (cal_count == 1) {
+    delay(5000);
+    Serial.println(cal_count);
+    Tamb = calculateMean(pixels, 64);
+  }
+  //getting top 2 rows and calibrating TH2 based on that
+  else if (cal_count > 1 && cal_count < 22) {
+    delay(1000);
+    Serial.println(cal_count);
+    float topPixels[16];
+    bool personFlag = false;
+    for (int i = 0; i < 16; i++) {
+      topPixels[i] = applyEquation(pixels[i]);  // Top half (first 16 pixels) (1st and 2nd rows)
+      if (topPixels[i] > 34) {
+        personFlag = true;
+      }
     }
-    //getting top 2 rows and calibrating TH2 based on that
-    else if (cal_count > 1 && cal_count < 22) {
-    //  delay(1000);
-      Serial.println(cal_count);
-      float topPixels[16];
-      bool personFlag = false;
+
+    if (!personFlag) {
+      Serial.println("need someone in view");
+      delay(5000);
+      cal_count--;
+    } else {
+      insertionSort(topPixels, 16);
+      float top8[8];
+      for (int i = 0; i < 8; i++) {
+        top8[i] = topPixels[i + 8];
+      }
+      means[cal_count - 2] = calculateMean(top8, 8);
+    }
+
+    if (cal_count == 21) {
+      float m = calculateMean(means, 20);
+      TH2 = m + ;
+      Serial.print("Threshold 2: ");
+      Serial.println(TH2);
+      Serial.println("Calibration done!");
+    }
+  }
+  //start checking for ppl
+  else if (cal_count >= 22) {
+    float topPixels[16];
+    //the previous grid had a person there
+    if (flag1 == true) {
+      flag1 = false;
       for (int i = 0; i < 16; i++) {
         topPixels[i] = applyEquation(pixels[i]);  // Top half (first 16 pixels) (1st and 2nd rows)
-        if (topPixels[i] > 35) {
-          personFlag = true;
+        if (topPixels[i] > 34) {
+          flag1 = true;
         }
       }
 
-      if (!personFlag) {
-        Serial.println("need someone in view");
-        cal_count--;
+      //if there was a person there and now there isn't
+      if (flag1 == false) {
+        //there was one person there previously
+        if (flag2 == false) {
+          count++;
+        }
+        //there were two ppl there previously
+        else {
+          count += 2;
+        }
+        //setting flag2 back to false for default
+        flag2 = false;
       }
+      //there was a person there and there's still a person there
       else {
         insertionSort(topPixels, 16);
         float top8[8];
         for (int i = 0; i < 8; i++) {
-          top8[i] = topPixels[i+8];
+          top8[i] = topPixels[i + 8];
         }
-        means[cal_count-2] = calculateMean(top8, 8);
-      }
-
-      if (cal_count == 21) {
-        float m = calculateMean(means, 20);
-        TH2 = m + 2.5 * calculateStandardDeviation(means, 20, m);
-        Serial.print("Threshold 2: ");
-        Serial.println(TH2);
-        Serial.println("Calibration done!");
-      }
-    }
-    //start checking for ppl
-    else if (cal_count >= 22) {
-      float topPixels[16];
-      //the previous grid had a person there
-      if (flag1 == true) {
-        flag1 = false;
-        for (int i = 0; i < 16; i++) {
-          topPixels[i] = applyEquation(pixels[i]);  // Top half (first 16 pixels) (1st and 2nd rows)
-          if (topPixels[i] > 35) {
-            flag1 = true;
-          }
+        float mean = calculateMean(top8, 8);
+        Serial.print("Mean of top 8: ");
+        Serial.println(mean);
+        //currently there are two ppl there
+        if (mean > TH2) {
+          flag2 = true;
         }
-
-        //if there was a person there and now there isn't
-        if (flag1 == false) {
-          //there was one person there previously
-          if (flag2 == false) {
+        //currently there is one person there
+        else {
+          Serial.println("wow hi debug printing");
+          //if there were 2 ppl there previously, add to count
+          if (flag2 == true) {
+            Serial.println("it should be reaching here but probably not");
             count++;
           }
-          //there were two ppl there previously
-          else {
-            count += 2;
-          }
-          //setting flag2 back to false for default
+          //set flag2 back to false (meaning there's one person there)
           flag2 = false;
         }
-        //there was a person there and there's still a person there
+      }
+    }
+    //the previous grid had no person
+    else {
+      Serial.println("there was nobody previously loop");
+      //checking for person
+      for (int i = 0; i < 16; i++) {
+        topPixels[i] = applyEquation(pixels[i]);  // Top half (first 16 pixels) (1st and 2nd rows)
+        if (topPixels[i] > 34) {
+          flag1 = true;
+        }
+      }
+      //if there is a person here currently
+      if (flag1 == true) {
+        insertionSort(topPixels, 16);
+        float top8[8];
+        for (int i = 0; i < 8; i++) {
+          top8[i] = topPixels[i + 8];
+        }
+        float mean = calculateMean(top8, 8);
+        Serial.print("Mean of top 8: ");
+        Serial.println(mean);
+        //two ppl there currently
+        if (mean > TH2) {
+          flag2 = true;
+        }
+        //one person there currently
         else {
-          insertionSort(topPixels, 16);
-          float top8[8];
-          for (int i = 0; i < 8; i++) {
-            top8[i] = topPixels[i+8];
-          }
-          float mean = calculateMean(top8, 8);
-          //currently there are two ppl there
-          if (mean > TH2) {
-            flag2 = true;
-            Serial.print("Mean of top 8: ");
-            Serial.println(mean);
-          }
-          //currently there is one person there
-          else {
-            Serial.println("wow hi debug printing");
-            //if there were 2 ppl there previously, add to count
-            if (flag2 == true) {
-              Serial.println("it should be reaching here but probably not");
-              count++;
-            }
-            //set flag2 back to false (meaning there's one person there)
-            flag2 = false;
-          }
-        }
-      }
-      //the previous grid had no person
-      else {
-        Serial.println("there was nobody previously loop");
-        //checking for person
-        for (int i = 0; i < 16; i++) {
-          topPixels[i] = applyEquation(pixels[i]);  // Top half (first 16 pixels) (1st and 2nd rows)
-          if (topPixels[i] > 35) {
-            flag1 = true;
-          }
-        }
-        //if there is a person here currently
-        if (flag1 == true) {
-          insertionSort(topPixels, 16);
-          float top8[8];
-          for (int i = 0; i < 8; i++) {
-            top8[i] = topPixels[i+8];
-          }
-          float mean = calculateMean(top8, 8);
-          //two ppl there currently
-          if (mean > TH2) {
-            flag2 = true;
-            Serial.print("Mean of top 8: ");
-            Serial.println(mean);
-          }
-          //one person there currently
-          else {
-            flag2 = false;
-          }
+          flag2 = false;
         }
       }
     }
+  }
 
-    //adding to cal_count so it keeps going
-    if (cal_count < 22) {
-      cal_count++;
-    }
-    Serial.print(flag1);
-    Serial.print(flag2);
-    Serial.println(count);
-    delay(1000);
+  //adding to cal_count so it keeps going
+  if (cal_count < 22) {
+    cal_count++;
+  }
+  Serial.print(flag1);
+  Serial.print(flag2);
+  Serial.println(count);
+  delay(100);
 }
 
 float calculateMean(float arr[], int size) {
@@ -216,7 +217,7 @@ void insertionSort(float arr[], int n) {
     // to one position ahead of their current position
     while (j >= 0 && arr[j] > key) {
       arr[j + 1] = arr[j];
-      j = j - 1;
+      j = j - 1;  
     }
 
     // Insert the key into the correct position
