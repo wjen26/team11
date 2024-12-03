@@ -55,6 +55,8 @@ void loop() {
     delay(5000);
     Serial.println(cal_count);
     Tamb = calculateMean(pixels, 64);
+    Serial.print("THIS IS AMBIENT::");
+    Serial.println(Tamb);
   }
   //getting top 2 rows and calibrating TH2 based on that
   else if (cal_count > 1 && cal_count < 22) {
@@ -84,7 +86,7 @@ void loop() {
 
     if (cal_count == 21) {
       float m = calculateMean(means, 20);
-      TH2 = m + ;
+      TH2 = m + 3;
       Serial.print("Threshold 2: ");
       Serial.println(TH2);
       Serial.println("Calibration done!");

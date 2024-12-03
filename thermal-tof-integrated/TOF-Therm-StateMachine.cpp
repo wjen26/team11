@@ -29,7 +29,7 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag, int num_therm)
             break;
         case TOFState::ENTER2:
             if (TOF1_flag == true && TOF2_flag == true && num_therm >= 2)
-                currentState = TOFState::EDGE_CASE;
+                currentState = TOFState::ENTER_EDGE_CASE;
             else if (TOF1_flag == true && TOF2_flag == false)
                 currentState = TOFState::ENTER1;
             else if (TOF1_flag == false && TOF2_flag == true)
@@ -89,7 +89,10 @@ void TOFStateMachine::updateState(bool TOF1_flag, bool TOF2_flag, int num_therm)
             numPeople--;
             currentState = TOFState::RESET;
             break;
-        case TOFState::EDGE_CASE: // THIS IS WHERE I NEED TO EDIT
+        case TOFState::ENTER_EDGE_CASE: // THIS IS WHERE I NEED TO EDIT
+            
+            break;
+        case TOFState::EXIT_EDGE_CASE: // THIS IS WHERE I NEED TO EDIT
             
             break;
         case TOFState::INVALID:

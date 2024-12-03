@@ -14,7 +14,8 @@ enum class TOFState {
     EXIT2,
     EXIT3,
     EXITEND,
-    EDGE_CASE,
+    ENTER_EDGE_CASE,
+    EXIT_EDGE_CASE,
     INVALID
 };
 
