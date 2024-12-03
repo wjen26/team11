@@ -10,17 +10,23 @@ allData = [];  % Initialize an empty array to store numeric data
 % Create a figure window before the loop starts
 figure;
 h = imagesc(zeros(8, 8));  % Initialize with a blank 8x8 matrix
-colormap('cool');  
+colormap('hot');  
 colorbar;  % Show the colorbar
 
+
+
 % Set the fixed color axis range between 15 and 35
-%caxis([0, 40]);  % Keep the color scale fixed between 15 and 35 for temperature value
+%caxis([23, 30]);  % Keep the color scale fixed between 15 and 35 for temperature value
 
 %initialize old blob count and new blob count
 blob_count = 0;
 old_blob_count = 0;
 %create threshold temp
-
+Tmax = 35;
+row_1and2_old = [];
+last_rows_old = [];
+top_8_old = [];
+top_8_last_old = [];
 %initialize num_features
 old_num_features = 0;
 
@@ -30,7 +36,7 @@ count = 0;
 % Initialize calibration step
 need_cal = true;
 cal_count = 0;
-Tamb = 0; calibration_matrices = {}; TH1 = 0; TH2 = 30.52; binary_TH = 17; ch = 15;
+Tamb = 0; calibration_matrices = {}; calibration_matrices2 = {}; TH1 = 0; TH2 = 0; binary_TH = 16; ch = 15;
 
 matrices = {};
 mid_value = [];
@@ -82,7 +88,7 @@ while true
             % Take the first 64 valid data points and reshape into an 8x8 matrix
             reshapedData = reshape(allData(1:64), 8, 8);
             %disp(reshapedData)
-            if cal_count == 13
+            if cal_count > 30
                 need_cal = false;
                 disp("calibrated")
             end
@@ -107,74 +113,100 @@ while true
                  allData = allData(65:end);
                 end 
             
-                if cal_count > 11
+                if cal_count == 12
                     disp("step 3")
                     TH1 = cal_step_3(calibration_matrices);
                     
                     % Remove the first 64 points from allData if you want to continue reading
                     allData = allData(65:end);
                 end
+                
+                if cal_count > 12 && cal_count < 30
+                    reshapedData = real_temp(reshapedData,ch,Tamb);
+                    reshapedData = rot90(reshapedData,-1)
+                    disp(reshapedData)
+                    if ~any(reshapedData(1:2,:) > 35)
+                        disp("step 4, need someone in view")
+                        cal_count = cal_count - 1;
+                    else
+                        disp("identified someone in view")
+                        calibration_matrices2{end+1} = reshapedData;
+                    end
+                    allData = allData(65:end);
+                end
+                
+                if cal_count == 30
+                    disp("step 5")
+                    TH2 = cal_step_5(calibration_matrices2);
+                end     
             end
+            
             cal_count = cal_count + 1;
             
-            % creates image
-            h.CData = reshapedData;
-            
-
-            % Label connected components
-            %[labeled_array, num_features] = bwlabel(binary_map);
-            % Display results
-            %disp(labeled_array);
-            %disp(['Number of blobs ', num2str(num_features)]);
-            
-            %Person crossing boolian
-            person_crossing = false;
-            
-            % Get the indices of each feature
-            %for feature_idx = 1:num_features
-                % Find the indices of the pixels corresponding to this feature
-                %[row, col] = find(labeled_array == feature_idx);
-    
-                % Store the indices in the cell array
-                %feature_indices{feature_idx} = [row, col];
-            %end
-            
-            % Now to access the row indices for each feature:
-            %for feature_idx = 1:num_features
-                % Get the indices for this feature
-                %indices = feature_indices{feature_idx};
-    
-                % Extract row indices (first column of the indices matrix)
-                %rows = indices(:, 1);
-                % Check if any row value is 0
-                %if any(rows == 0)
-                  %person_crossing = true;
-                %end
-            %end
-            
-            %disp(['person crossing?',string(person_crossing)
+            reshapedData = rot90(reshapedData,-1);
             
             
             if need_cal == false
             
-            reshapedData = real_temp(reshapedData,ch,Tamb)
+            reshapedData = real_temp(reshapedData,ch,Tamb);
+            %reshapedData = rot90(reshapedData,-1)
             matrices{end+1} = reshapedData;
             mid_value(end+1) = mean(mean(reshapedData(4:5,4:5)));
             
             % Calculate the average of the 8x8 matrix
             avgValue = mean(reshapedData(:));  % Compute the average of all values in the matrix
+            disp("avg")
+            disp(avgValue)
             maxValue = max(reshapedData(:));
             binary_map = reshapedData > TH2;
             weighted_binary = binary_map.*reshapedData;
             binary_vec(end+1) = sum(binary_map(:));
             
-            if avgValue < TH1
-                blob_count = 0;
-            elseif sum(binary_map(:)) > binary_TH
-                blob_count = 2;
-            else
-                blob_count = 1;
+            
+            %if avgValue < TH1
+                %blob_count = 0;
+            %elseif sum(binary_map(:)) > binary_TH
+               % blob_count = 2;
+           % else
+                %blob_count = 1;
+            %end
+
+            %identify people using max value
+            row_1and2 = reshapedData(1:2,:);
+            sorted = sort(row_1and2(:), "descend");
+            top_8 = sorted(1:8);
+            disp(mean(top_8));
+            if ~isempty(row_1and2_old)
+                if max(row_1and2(:)) < 35 && max(row_1and2_old(:)) > 35
+                    if mean(top_8_old) > TH2 %identify value before going
+                       disp(mean(top_8_old))
+                       count = count + 2;
+                   else 
+                       count = count + 1;
+                   end
+                end
             end
+            row_1and2_old = row_1and2;
+            top_8_old = top_8;
+            %disp(mean(top_8));
+            
+            %identify decrement
+            last_rows = reshapedData(7:8,:);
+            sorted_last = sort(last_rows(:), "descend");
+            top_8_last = sorted_last(1:8);
+            if ~isempty(last_rows_old)
+                if max(last_rows(:)) < 35 && max(last_rows_old(:)) > 35
+                   if mean(top_8_last_old) > TH2
+                       disp(mean(top_8_old))
+                       count = count - 2
+                   else 
+                       count = count - 1;
+                   end
+                end
+            end
+            last_rows_old = last_rows;
+            top_8_last_old = top_8_last;
+
 
             %disp(['person crossing?',string(person_crossing)])
             disp(['old number of blobs: ', num2str(old_blob_count)])
@@ -196,7 +228,9 @@ while true
             %disp(['mid_value = ', num2str(mid_value)])
             disp(['count = ', num2str(count)])
             end
-
+            % creates image
+            h.CData = reshapedData;
+            %disp(mean(reshapedData(:)));
         end
     end
 end
